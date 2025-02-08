@@ -12,7 +12,7 @@ def download():
         return jsonify({"error": "Missing 'url' parameter"}), 400
 
     try:
-        # Unique file names to avoid conflicts
+        # Unique filenames to avoid conflicts
         video_file = f"{uuid.uuid4()}.mp4"
         audio_file = f"{uuid.uuid4()}.mp3"
         output_file = f"{uuid.uuid4()}.mp4"
@@ -20,7 +20,8 @@ def download():
         ydl_opts = {
             'format': 'bestvideo+bestaudio/best',
             'outtmpl': {'video': video_file, 'audio': audio_file},
-            'merge_output_format': 'mp4'
+            'merge_output_format': 'mp4',
+            'cookiefile': 'cookies.txt'  # Ensure cookies.txt is in your project folder
         }
 
         with YoutubeDL(ydl_opts) as ydl:
@@ -33,12 +34,12 @@ def download():
         # Merge video and audio using FFmpeg
         os.system(f"ffmpeg -i {video_file} -i {audio_file} -c:v copy -c:a aac {output_file}")
 
-        # Clean up the separate files
+        # Clean up intermediate files
         os.remove(video_file)
         os.remove(audio_file)
 
         return send_file(output_file, as_attachment=True)
-    
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

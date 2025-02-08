@@ -1,24 +1,10 @@
-from flask import Flask, request, send_file, jsonify
+from flask import Flask, request, Response, jsonify
 from yt_dlp import YoutubeDL
 import os
 import tempfile
-import threading
 
 app = Flask(__name__)
-COOKIES_PATH = os.path.join(os.getcwd(), 'cookies.txt')  # Path to cookies.txt
-
-def cleanup_temp_dir(tmp_dir):
-    """Delete temporary directory after a delay (ensure file is sent first)."""
-    def delayed_cleanup():
-        import time
-        time.sleep(60)  # Wait 60 seconds before cleanup
-        for root, dirs, files in os.walk(tmp_dir, topdown=False):
-            for name in files:
-                os.remove(os.path.join(root, name))
-            for name in dirs:
-                os.rmdir(os.path.join(root, name))
-        os.rmdir(tmp_dir)
-    threading.Thread(target=delayed_cleanup).start()
+COOKIES_PATH = os.path.join(os.getcwd(), 'cookies.txt')
 
 @app.route('/download', methods=['GET'])
 def download():
@@ -27,7 +13,7 @@ def download():
         return jsonify({"error": "Missing 'url' parameter"}), 400
 
     try:
-        # Create a persistent (non-context-managed) temp directory
+        # Create a temporary directory
         tmp_dir = tempfile.mkdtemp()
         output_path = os.path.join(tmp_dir, "video.mp4")
 
@@ -35,7 +21,7 @@ def download():
             'cookiefile': COOKIES_PATH,
             'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best',
             'merge_output_format': 'mp4',
-            'outtmpl': output_path,  # Directly write to the output path
+            'outtmpl': output_path,
             'quiet': True,
             'postprocessors': [{
                 'key': 'FFmpegVideoConvertor',
@@ -48,16 +34,22 @@ def download():
             info = ydl.extract_info(url, download=True)
             final_path = ydl.prepare_filename(info)
 
-        # Send the file and schedule cleanup
-        response = send_file(
-            final_path,
-            as_attachment=True,
-            download_name=f"{info['title']}.mp4"
-        )
+        # Stream the file in chunks
+        def generate():
+            with open(final_path, 'rb') as f:
+                while chunk := f.read(1024 * 1024):  # Read 1MB chunks
+                    yield chunk
+            # Cleanup after streaming
+            os.remove(final_path)
+            os.rmdir(tmp_dir)
 
-        # Clean up after sending the file
-        cleanup_temp_dir(tmp_dir)
-        return response
+        return Response(
+            generate(),
+            headers={
+                'Content-Disposition': f'attachment; filename="{info["title"]}.mp4"',
+                'Content-Type': 'video/mp4'
+            }
+        )
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500

@@ -10,9 +10,8 @@ def download():
         return jsonify({"error": "Missing 'url' parameter"}), 400
     
     try:
-        # Fetch best video+audio and audio-only formats
         ydl_opts = {
-            'format': 'bestvideo+bestaudio/best',  # best available
+            'format': 'bestvideo+bestaudio/best',  # best video+audio
             'cookiefile': 'cookies.txt',
             'noplaylist': True
         }
@@ -21,8 +20,18 @@ def download():
             info = ydl.extract_info(url, download=False)
 
             # Extract URLs for video+audio combined and audio-only
-            video_audio_url = info['url'] if 'url' in info else None
-            audio_url = next((f['url'] for f in info['formats'] if f['acodec'] != 'none' and f['vcodec'] == 'none'), None)
+            video_audio_url = None
+            audio_url = None
+
+            for f in info.get('formats', []):
+                if f.get('vcodec') != 'none' and f.get('acodec') != 'none':
+                    video_audio_url = f['url']  # Best video+audio combined
+                    break
+
+            for f in info.get('formats', []):
+                if f.get('acodec') != 'none' and f.get('vcodec') == 'none':
+                    audio_url = f['url']  # Best audio-only
+                    break
 
             return jsonify({
                 "video_audio_url": video_audio_url,

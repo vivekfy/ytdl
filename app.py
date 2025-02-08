@@ -1,9 +1,11 @@
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify
 from yt_dlp import YoutubeDL
-import uuid
 import os
 
 app = Flask(__name__)
+
+# Path to cookies.txt (Railway will look in the root directory)
+COOKIES_PATH = os.path.join(os.getcwd(), 'cookies.txt')
 
 @app.route('/download', methods=['GET'])
 def download():
@@ -13,8 +15,9 @@ def download():
 
     try:
         ydl_opts = {
-            'format': 'best',  # No merging (avoids ffmpeg)
-            'noplaylist': True,
+            'cookiefile': COOKIES_PATH,  # Use cookies.txt
+            'format': 'best',
+            'quiet': True,
         }
 
         with YoutubeDL(ydl_opts) as ydl:

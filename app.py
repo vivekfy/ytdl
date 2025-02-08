@@ -15,9 +15,23 @@ def download():
         }
         with YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
-            # Extract all format URLs
-            formats = [{"format": f["format"], "url": f["url"]} for f in info["formats"]]
-            return jsonify({"formats": formats})
+
+            # Audio-only formats
+            audio_formats = [
+                {"format": f["format"], "url": f["url"]}
+                for f in info["formats"] if f.get("acodec") != "none" and f.get("vcodec") == "none"
+            ]
+
+            # Video and audio formats
+            video_audio_formats = [
+                {"format": f["format"], "url": f["url"]}
+                for f in info["formats"] if f.get("acodec") != "none" and f.get("vcodec") != "none"
+            ]
+
+            return jsonify({
+                "audio_only_formats": audio_formats,
+                "video_audio_formats": video_audio_formats
+            })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

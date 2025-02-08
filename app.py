@@ -1,5 +1,4 @@
-import uuid
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify
 from yt_dlp import YoutubeDL
 
 app = Flask(__name__)
@@ -10,21 +9,29 @@ def download():
     if not url:
         return jsonify({"error": "Missing 'url' parameter"}), 400
 
-    # Unique output filename
-    output_file = f"{uuid.uuid4()}.mp4"
-
     try:
         ydl_opts = {
-            'format': 'bestvideo+bestaudio/best',
-            'outtmpl': output_file,
-            'merge_output_format': 'mp4',
-            'cookiefile': 'cookies.txt'  # Use cookies to bypass YouTube restrictions
+            'format': 'bestvideo+bestaudio/best',  # Higher-quality video+audio
+            'cookiefile': 'cookies.txt'
         }
 
         with YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
+            info = ydl.extract_info(url, download=False)
 
-        return send_file(output_file, as_attachment=True)
+            video_audio_url = None
+            audio_only_url = None
+
+            # Find video and audio URLs
+            for f in info['formats']:
+                if f['format_id'] == '18':  # Look for combined mp4 (if exists)
+                    video_audio_url = f['url']
+                elif f['vcodec'] == 'none' and f['acodec'] != 'none':
+                    audio_only_url = f['url']
+
+            return jsonify({
+                "video_audio_url": video_audio_url or "Not available",
+                "audio_only_url": audio_only_url or "Not available"
+            })
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500

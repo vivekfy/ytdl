@@ -17,32 +17,34 @@ def download():
 
     try:
         # Generate unique file name for each download
-        video_filename = f"{uuid.uuid4()}.mp4"
-        video_path = os.path.join(DOWNLOAD_FOLDER, video_filename)
+        unique_filename = str(uuid.uuid4())
+        video_path = os.path.join(DOWNLOAD_FOLDER, f"{unique_filename}.mp4")
 
         ydl_opts = {
             'cookiefile': 'cookies.txt',
             'format': 'bestvideo+bestaudio/best',
-            'outtmpl': video_path,
+            'outtmpl': os.path.join(DOWNLOAD_FOLDER, unique_filename),
             'merge_output_format': 'mp4',
-            'postprocessors': [{
-                'key': 'FFmpegMerger',
-            }]
+            'postprocessors': [
+                {
+                    'key': 'FFmpegMerger',
+                },
+                {
+                    'key': 'FFmpegVideoConvertor',
+                    'preferedformat': 'mp4',
+                }
+            ]
         }
 
         with YoutubeDL(ydl_opts) as ydl:
-            result = ydl.download([url])
-        
-        # Double-check if file is completely downloaded
-        if not os.path.exists(video_path):
-            return jsonify({"error": "Download failed"}), 500
+            ydl.download([url])
 
-        file_size = os.path.getsize(video_path)
-        if file_size == 0:
-            return jsonify({"error": "Downloaded file is empty"}), 500
+        # Check if the file was successfully created
+        if not os.path.exists(video_path):
+            return jsonify({"error": "Merged file not found"}), 500
 
         # Return download URL
-        return jsonify({"download_url": f"{request.host_url}downloads/{video_filename}"})
+        return jsonify({"download_url": f"{request.host_url}downloads/{unique_filename}.mp4"})
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500

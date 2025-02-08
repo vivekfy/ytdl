@@ -16,7 +16,7 @@ def download():
         return jsonify({"error": "Missing 'url' parameter"}), 400
 
     try:
-        unique_filename = str(uuid.uuid4())
+        unique_filename = f"{uuid.uuid4()}"
         output_template = os.path.join(DOWNLOAD_FOLDER, unique_filename) + ".%(ext)s"
         
         ydl_opts = {
@@ -32,11 +32,12 @@ def download():
         with YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
 
+        # Construct the path of the merged video file
         merged_file = os.path.join(DOWNLOAD_FOLDER, f"{unique_filename}.mp4")
         
         # Ensure the merged file exists
         if not os.path.exists(merged_file):
-            return jsonify({"error": "Merged MP4 file not found. Check if FFmpeg merged correctly."}), 500
+            return jsonify({"error": "Download or merge failed. Please check the logs."}), 500
 
         return jsonify({"download_url": f"{request.host_url}downloads/{unique_filename}.mp4"})
 

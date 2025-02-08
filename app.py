@@ -1,11 +1,10 @@
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify
 from yt_dlp import YoutubeDL
 import os
-import tempfile
 
 app = Flask(__name__)
 
-# Path to cookies.txt (upload this file to Railway)
+# Path to cookies.txt (Railway will look in the root directory)
 COOKIES_PATH = os.path.join(os.getcwd(), 'cookies.txt')
 
 @app.route('/download', methods=['GET'])
@@ -15,30 +14,17 @@ def download():
         return jsonify({"error": "Missing 'url' parameter"}), 400
 
     try:
-        # Create a temporary directory for processing
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            ydl_opts = {
-                'cookiefile': COOKIES_PATH,
-                'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best',  # Best video + audio
-                'merge_output_format': 'mp4',  # Merge with ffmpeg
-                'outtmpl': os.path.join(tmp_dir, '%(title)s.%(ext)s'),  # Save to temp dir
-                'quiet': True,
-                'postprocessors': [{
-                    'key': 'FFmpegVideoConvertor',
-                    'preferedformat': 'mp4',  # Ensure MP4 output
-                }],
-            }
+        ydl_opts = {
+            'cookiefile': COOKIES_PATH,  # Use cookies.txt
+            'format': 'best',
+            'quiet': True,
+        }
 
-            with YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=True)
-                downloaded_file = ydl.prepare_filename(info)
-                
-                # Send the merged file directly
-                return send_file(
-                    downloaded_file,
-                    as_attachment=True,
-                    download_name=f"{info['title']}.mp4"
-                )
+        with YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            video_url = info['url']
+
+        return jsonify({"video_url": video_url})
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500

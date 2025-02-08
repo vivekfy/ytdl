@@ -8,35 +8,16 @@ def download():
     url = request.args.get('url')
     if not url:
         return jsonify({"error": "Missing 'url' parameter"}), 400
-    
+
     try:
         ydl_opts = {
-            'format': 'bestvideo+bestaudio/best',  # best video+audio
-            'cookiefile': 'cookies.txt',
-            'noplaylist': True
+            'cookiefile': 'cookies.txt'  # Keep the cookies option
         }
-
         with YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
-
-            # Extract URLs for video+audio combined and audio-only
-            video_audio_url = None
-            audio_url = None
-
-            for f in info.get('formats', []):
-                if f.get('vcodec') != 'none' and f.get('acodec') != 'none':
-                    video_audio_url = f['url']  # Best video+audio combined
-                    break
-
-            for f in info.get('formats', []):
-                if f.get('acodec') != 'none' and f.get('vcodec') == 'none':
-                    audio_url = f['url']  # Best audio-only
-                    break
-
-            return jsonify({
-                "video_audio_url": video_audio_url,
-                "audio_url": audio_url
-            })
+            # Extract all format URLs
+            formats = [{"format": f["format"], "url": f["url"]} for f in info["formats"]]
+            return jsonify({"formats": formats})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

@@ -1,11 +1,10 @@
-from flask import Flask, request, jsonify, send_from_directory
-from yt_dlp import YoutubeDL
+from flask import Flask, request, jsonify, send_file
 import os
 import uuid
+from yt_dlp import YoutubeDL
 
 app = Flask(__name__)
 
-# Directory to store downloaded files
 DOWNLOAD_FOLDER = 'downloads'
 os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
 
@@ -16,7 +15,6 @@ def download():
         return jsonify({"error": "Missing 'url' parameter"}), 400
 
     try:
-        # Generate unique file name for each download
         video_filename = f"{uuid.uuid4()}.mp4"
         video_path = os.path.join(DOWNLOAD_FOLDER, video_filename)
 
@@ -25,16 +23,11 @@ def download():
             'format': 'bestvideo+bestaudio/best',
             'outtmpl': video_path,
             'merge_output_format': 'mp4',
-            'postprocessors': [{
-                'key': 'FFmpegVideoConvertor',
-                'preferedformat': 'mp4'
-            }]
         }
 
         with YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
 
-        # Return download URL
         return jsonify({"download_url": f"{request.host_url}downloads/{video_filename}"})
 
     except Exception as e:
@@ -42,7 +35,10 @@ def download():
 
 @app.route('/downloads/<filename>', methods=['GET'])
 def serve_file(filename):
-    return send_from_directory(DOWNLOAD_FOLDER, filename)
+    file_path = os.path.join(DOWNLOAD_FOLDER, filename)
+    if not os.path.exists(file_path):
+        return jsonify({"error": "File not found"}), 404
+    return send_file(file_path, as_attachment=True)
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=8080)

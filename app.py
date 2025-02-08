@@ -1,5 +1,8 @@
 from flask import Flask, request, jsonify
 from yt_dlp import YoutubeDL
+import os
+import uuid
+import subprocess
 
 app = Flask(__name__)
 
@@ -10,28 +13,18 @@ def download():
         return jsonify({"error": "Missing 'url' parameter"}), 400
 
     try:
+        video_file = f"{uuid.uuid4()}.mp4"
         ydl_opts = {
-            'format': 'bestvideo+bestaudio/best',  # Higher-quality video+audio
-            'cookiefile': 'cookies.txt'
+            'cookiefile': 'cookies.txt',
+            'format': 'bestvideo+bestaudio/best',
+            'outtmpl': video_file,
+            'merge_output_format': 'mp4'
         }
 
         with YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
+            ydl.download([url])
 
-            video_audio_url = None
-            audio_only_url = None
-
-            # Find video and audio URLs
-            for f in info['formats']:
-                if f['format_id'] == '18':  # Look for combined mp4 (if exists)
-                    video_audio_url = f['url']
-                elif f['vcodec'] == 'none' and f['acodec'] != 'none':
-                    audio_only_url = f['url']
-
-            return jsonify({
-                "video_audio_url": video_audio_url or "Not available",
-                "audio_only_url": audio_only_url or "Not available"
-            })
+        return jsonify({"download_url": f"{request.host_url}{video_file}"})
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500

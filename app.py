@@ -16,34 +16,27 @@ def download():
         return jsonify({"error": "Missing 'url' parameter"}), 400
 
     try:
-        # Generate a unique filename without extension
         unique_filename = str(uuid.uuid4())
-        download_path = os.path.join(DOWNLOAD_FOLDER, f"{unique_filename}.mp4")
+        download_base_path = os.path.join(DOWNLOAD_FOLDER, unique_filename)
 
         ydl_opts = {
             'cookiefile': 'cookies.txt',
             'format': 'bestvideo+bestaudio/best',
-            'outtmpl': os.path.join(DOWNLOAD_FOLDER, unique_filename),
+            'outtmpl': f"{download_base_path}.%(ext)s",
             'merge_output_format': 'mp4',
-            'postprocessors': [
-                {
-                    'key': 'FFmpegMerger'
-                }
-            ]
+            'postprocessors': [{
+                'key': 'FFmpegMerger'
+            }]
         }
 
         with YoutubeDL(ydl_opts) as ydl:
-            info_dict = ydl.extract_info(url, download=True)
+            ydl.download([url])
 
-        # Rename the merged file to .mp4 after successful merge
-        if os.path.exists(f"{os.path.join(DOWNLOAD_FOLDER, unique_filename)}.mp4"):
-            os.rename(f"{os.path.join(DOWNLOAD_FOLDER, unique_filename)}.mp4", download_path)
-        
-        # Ensure the merged file exists
-        if not os.path.exists(download_path):
+        # Ensure the merged MP4 file exists
+        merged_file_path = f"{download_base_path}.mp4"
+        if not os.path.exists(merged_file_path):
             return jsonify({"error": "Merged file not found"}), 500
 
-        # Return download URL
         return jsonify({"download_url": f"{request.host_url}downloads/{unique_filename}.mp4"})
 
     except Exception as e:

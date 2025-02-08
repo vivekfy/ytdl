@@ -8,33 +8,25 @@ def download():
     url = request.args.get('url')
     if not url:
         return jsonify({"error": "Missing 'url' parameter"}), 400
-
+    
     try:
+        # Fetch best video+audio and audio-only formats
         ydl_opts = {
-            'cookiefile': 'cookies.txt'  # Keep cookies to handle restricted videos
+            'format': 'bestvideo+bestaudio/best',  # best available
+            'cookiefile': 'cookies.txt',
+            'noplaylist': True
         }
+
         with YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
 
-            # Get audio-only formats
-            audio_formats = [
-                {"format_id": f["format_id"], "ext": f["ext"], "url": f["url"]}
-                for f in info["formats"] if f.get("acodec") != "none" and f.get("vcodec") == "none"
-            ]
-
-            # Get video+audio formats sorted by resolution
-            video_audio_formats = sorted(
-                [
-                    {"format_id": f["format_id"], "resolution": f.get("resolution", "N/A"),
-                     "ext": f["ext"], "url": f["url"]}
-                    for f in info["formats"] if f.get("acodec") != "none" and f.get("vcodec") != "none"
-                ],
-                key=lambda x: x.get("resolution", "N/A"), reverse=True
-            )
+            # Extract URLs for video+audio combined and audio-only
+            video_audio_url = info['url'] if 'url' in info else None
+            audio_url = next((f['url'] for f in info['formats'] if f['acodec'] != 'none' and f['vcodec'] == 'none'), None)
 
             return jsonify({
-                "audio_only_formats": audio_formats,
-                "video_audio_formats": video_audio_formats
+                "video_audio_url": video_audio_url,
+                "audio_url": audio_url
             })
     except Exception as e:
         return jsonify({"error": str(e)}), 500

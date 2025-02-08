@@ -8,15 +8,16 @@ def download():
     url = request.args.get('url')
     if not url:
         return jsonify({"error": "Missing 'url' parameter"}), 400
-    
+
     try:
         ydl_opts = {
-            'format': 'best',
-            'cookiefile': 'cookies.txt'  # Add this line
+            'cookiefile': 'cookies.txt'  # Keep the cookies option
         }
         with YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
-            return jsonify({"url": info['url']})
+            # Extract all format URLs
+            formats = [{"format": f["format"], "url": f["url"]} for f in info["formats"]]
+            return jsonify({"formats": formats})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

@@ -26,13 +26,20 @@ def download():
             'outtmpl': video_path,
             'merge_output_format': 'mp4',
             'postprocessors': [{
-                'key': 'FFmpegVideoConvertor',
-                'preferedformat': 'mp4'
+                'key': 'FFmpegMerger',
             }]
         }
 
         with YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
+            result = ydl.download([url])
+        
+        # Double-check if file is completely downloaded
+        if not os.path.exists(video_path):
+            return jsonify({"error": "Download failed"}), 500
+
+        file_size = os.path.getsize(video_path)
+        if file_size == 0:
+            return jsonify({"error": "Downloaded file is empty"}), 500
 
         # Return download URL
         return jsonify({"download_url": f"{request.host_url}downloads/{video_filename}"})

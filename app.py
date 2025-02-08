@@ -1,4 +1,3 @@
-import os
 import uuid
 from flask import Flask, request, jsonify, send_file
 from yt_dlp import YoutubeDL
@@ -11,32 +10,19 @@ def download():
     if not url:
         return jsonify({"error": "Missing 'url' parameter"}), 400
 
-    try:
-        # Unique filenames to avoid conflicts
-        video_file = f"{uuid.uuid4()}.mp4"
-        audio_file = f"{uuid.uuid4()}.mp3"
-        output_file = f"{uuid.uuid4()}.mp4"
+    # Unique output filename
+    output_file = f"{uuid.uuid4()}.mp4"
 
+    try:
         ydl_opts = {
             'format': 'bestvideo+bestaudio/best',
-            'outtmpl': {'video': video_file, 'audio': audio_file},
+            'outtmpl': output_file,
             'merge_output_format': 'mp4',
-            'cookiefile': 'cookies.txt'  # Ensure cookies.txt is in your project folder
+            'cookiefile': 'cookies.txt'  # Use cookies to bypass YouTube restrictions
         }
 
         with YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-
-        # Check if FFmpeg is available
-        if not os.system("ffmpeg -version") == 0:
-            return jsonify({"error": "FFmpeg not found. Please install FFmpeg."}), 500
-
-        # Merge video and audio using FFmpeg
-        os.system(f"ffmpeg -i {video_file} -i {audio_file} -c:v copy -c:a aac {output_file}")
-
-        # Clean up intermediate files
-        os.remove(video_file)
-        os.remove(audio_file)
+            ydl.download([url])
 
         return send_file(output_file, as_attachment=True)
 

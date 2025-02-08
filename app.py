@@ -11,22 +11,26 @@ def download():
 
     try:
         ydl_opts = {
-            'cookiefile': 'cookies.txt'  # Keep the cookies option
+            'cookiefile': 'cookies.txt'  # Keep cookies to handle restricted videos
         }
         with YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
 
-            # Audio-only formats
+            # Get audio-only formats
             audio_formats = [
-                {"format": f["format"], "url": f["url"]}
+                {"format_id": f["format_id"], "ext": f["ext"], "url": f["url"]}
                 for f in info["formats"] if f.get("acodec") != "none" and f.get("vcodec") == "none"
             ]
 
-            # Video and audio formats
-            video_audio_formats = [
-                {"format": f["format"], "url": f["url"]}
-                for f in info["formats"] if f.get("acodec") != "none" and f.get("vcodec") != "none"
-            ]
+            # Get video+audio formats sorted by resolution
+            video_audio_formats = sorted(
+                [
+                    {"format_id": f["format_id"], "resolution": f.get("resolution", "N/A"),
+                     "ext": f["ext"], "url": f["url"]}
+                    for f in info["formats"] if f.get("acodec") != "none" and f.get("vcodec") != "none"
+                ],
+                key=lambda x: x.get("resolution", "N/A"), reverse=True
+            )
 
             return jsonify({
                 "audio_only_formats": audio_formats,

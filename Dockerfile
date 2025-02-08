@@ -1,20 +1,15 @@
-# Use an official Python runtime as a parent image
+# Use a Python base image
 FROM python:3.9-slim
 
-# Install system dependencies including ffmpeg
+# Install ffmpeg and dependencies
 RUN apt-get update && apt-get install -y ffmpeg
 
-# Set the working directory
-WORKDIR /app
-
 # Copy project files
+WORKDIR /app
 COPY . .
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install flask yt-dlp
 
-# Expose the port the app runs on
-EXPOSE 8080
-
-# Run the application
-CMD ["python", "app.py"]
+# Run the app
+CMD ["python", "main.py"]

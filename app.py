@@ -17,12 +17,12 @@ def download():
 
     try:
         unique_filename = str(uuid.uuid4())
-        video_file_path = os.path.join(DOWNLOAD_FOLDER, f"{unique_filename}.mp4")
-
+        output_template = os.path.join(DOWNLOAD_FOLDER, unique_filename) + ".%(ext)s"
+        
         ydl_opts = {
             'cookiefile': 'cookies.txt',
             'format': 'bestvideo+bestaudio/best',
-            'outtmpl': os.path.join(DOWNLOAD_FOLDER, unique_filename) + '.%(ext)s',
+            'outtmpl': output_template,
             'merge_output_format': 'mp4',
             'postprocessors': [{
                 'key': 'FFmpegMerger',
@@ -32,9 +32,11 @@ def download():
         with YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
 
+        merged_file = os.path.join(DOWNLOAD_FOLDER, f"{unique_filename}.mp4")
+        
         # Ensure the merged file exists
-        if not os.path.exists(video_file_path):
-            return jsonify({"error": "Merged MP4 file not found"}), 500
+        if not os.path.exists(merged_file):
+            return jsonify({"error": "Merged MP4 file not found. Check if FFmpeg merged correctly."}), 500
 
         return jsonify({"download_url": f"{request.host_url}downloads/{unique_filename}.mp4"})
 

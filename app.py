@@ -54,8 +54,12 @@ def download():
     except Exception as e:
         return {"error": str(e)}, 500
     finally:
+        # Ensure filename cleanup only if it exists
         if filename and os.path.exists(filename):
-            os.remove(filename)  # Clean up after sending the file
+            try:
+                os.remove(filename)
+            except Exception as cleanup_error:
+                print(f"Error cleaning up file: {cleanup_error}")
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=8080)

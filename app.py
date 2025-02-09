@@ -1,15 +1,22 @@
 from flask import Flask, request, jsonify
 from yt_dlp import YoutubeDL
 import os
+from urllib.parse import unquote
 
 app = Flask(__name__)
 COOKIES_PATH = os.path.join(os.getcwd(), 'cookies.txt')
 
 @app.route('/download', methods=['GET'])
 def get_video_url():
-    url = request.args.get('url')
+    # Decode the URL parameter to handle special characters
+    url = unquote(request.args.get('url', ''))  # Use empty string as default
+    
     if not url:
         return jsonify({"error": "Missing 'url' parameter"}), 400
+
+    # Validate the URL format
+    if "youtube.com/watch" not in url and "youtu.be/" not in url:
+        return jsonify({"error": "Invalid YouTube URL"}), 400
 
     try:
         ydl_opts = {
@@ -20,7 +27,7 @@ def get_video_url():
 
         with YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
-            video_url = info['url']  # Direct URL to the highest-quality MP4
+            video_url = info['url']
 
         return jsonify({"video_url": video_url})
 

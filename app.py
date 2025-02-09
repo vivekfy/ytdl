@@ -38,6 +38,7 @@ def download():
     if not url or not format_id:
         return {"error": "Missing 'url' or 'format_id' parameter"}, 400
 
+    filename = ''
     try:
         ydl_opts = {
             'format': format_id,
@@ -53,7 +54,7 @@ def download():
     except Exception as e:
         return {"error": str(e)}, 500
     finally:
-        if os.path.exists(filename):
+        if filename and os.path.exists(filename):
             os.remove(filename)  # Clean up after sending the file
 
 if __name__ == "__main__":

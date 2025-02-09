@@ -21,7 +21,7 @@ def video_info():
                 "format_id": f["format_id"],
                 "resolution": f.get("resolution", "audio-only" if "audio" in f["format"] else "unknown"),
                 "file_size": f.get("filesize", "unknown"),
-                "url": f["url"]
+                "ext": f.get("ext"),
             } for f in info['formats'] if f.get('url')]
 
             return jsonify({

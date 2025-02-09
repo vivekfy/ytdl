@@ -4,7 +4,6 @@ import os
 
 app = Flask(__name__)
 
-# Path to cookies.txt (Railway will look in the root directory)
 COOKIES_PATH = os.path.join(os.getcwd(), 'cookies.txt')
 
 @app.route('/download', methods=['GET'])
@@ -15,16 +14,21 @@ def download():
 
     try:
         ydl_opts = {
-            'cookiefile': COOKIES_PATH,  # Use cookies.txt
-            'format': 'best',
+            'cookiefile': COOKIES_PATH,
             'quiet': True,
         }
 
         with YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
-            video_url = info['url']
+            formats = info.get('formats', [])
+            
+            # Sort formats by quality in descending order
+            formats.sort(key=lambda x: -x.get('quality', 0))
+            
+            # Get top 3 video URLs
+            video_urls = [f['url'] for f in formats[:3]]
 
-        return jsonify({"video_url": video_url})
+        return jsonify({"video_urls": video_urls})
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500

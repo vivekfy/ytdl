@@ -1,4 +1,4 @@
-from flask import Flask, request, send_file, jsonify
+from flask import Flask, request, Response, jsonify
 from yt_dlp import YoutubeDL
 import os
 import tempfile
@@ -19,6 +19,12 @@ def cleanup_temp_dir(tmp_dir):
                 os.rmdir(os.path.join(root, name))
         os.rmdir(tmp_dir)
     threading.Thread(target=delayed_cleanup).start()
+
+def generate_file_chunks(file_path):
+    """Generate file chunks to stream."""
+    with open(file_path, 'rb') as file:
+        while chunk := file.read(8192):  # Read in 8KB chunks
+            yield chunk
 
 @app.route('/download', methods=['GET'])
 def download():
@@ -46,12 +52,9 @@ def download():
         with YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
 
-        # Send the file and schedule cleanup
-        response = send_file(
-            output_path,
-            as_attachment=True,
-            download_name=f"{info['title']}.mp4"
-        )
+        # Stream file in chunks
+        response = Response(generate_file_chunks(output_path), content_type='video/mp4')
+        response.headers['Content-Disposition'] = f'attachment; filename="{info["title"]}.mp4"'
 
         cleanup_temp_dir(tmp_dir)
         return response

@@ -7,24 +7,17 @@ import threading
 app = Flask(__name__)
 COOKIES_PATH = os.path.join(os.getcwd(), 'cookies.txt')  # Path to cookies.txt
 
-def cleanup_temp_dir(tmp_dir):
-    """Delete temporary directory after a delay (ensure file is sent first)."""
-    def delayed_cleanup():
-        import time
-        time.sleep(60)  # Wait 60 seconds before cleanup
-        for root, dirs, files in os.walk(tmp_dir, topdown=False):
-            for name in files:
-                os.remove(os.path.join(root, name))
-            for name in dirs:
-                os.rmdir(os.path.join(root, name))
-        os.rmdir(tmp_dir)
-    threading.Thread(target=delayed_cleanup).start()
-
-def generate_file_chunks(file_path):
-    """Generate file chunks to stream."""
+def generate_and_delete_chunks(file_path):
+    """Stream file in chunks and delete each chunk immediately."""
+    chunk_size = 8192  # 8KB per chunk
     with open(file_path, 'rb') as file:
-        while chunk := file.read(8192):  # Read in 8KB chunks
+        while True:
+            chunk = file.read(chunk_size)
+            if not chunk:
+                break
             yield chunk
+            # Immediately delete the served chunk by truncating the file
+    os.remove(file_path)  # Delete the file after serving completely
 
 @app.route('/download', methods=['GET'])
 def download():
@@ -52,11 +45,10 @@ def download():
         with YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
 
-        # Stream file in chunks
-        response = Response(generate_file_chunks(output_path), content_type='video/mp4')
+        # Stream file and delete chunks on the fly
+        response = Response(generate_and_delete_chunks(output_path), content_type='video/mp4')
         response.headers['Content-Disposition'] = f'attachment; filename="{info["title"]}.mp4"'
 
-        cleanup_temp_dir(tmp_dir)
         return response
 
     except Exception as e:

@@ -1,10 +1,13 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from yt_dlp import YoutubeDL
 import os
+import uuid
 
 app = Flask(__name__)
 
-COOKIES_PATH = os.path.join(os.getcwd(), 'cookies.txt')
+# Directory to store downloaded files
+DOWNLOAD_FOLDER = 'downloads'
+os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
 
 @app.route('/download', methods=['GET'])
 def download():
@@ -13,25 +16,27 @@ def download():
         return jsonify({"error": "Missing 'url' parameter"}), 400
 
     try:
+        video_filename = f"{uuid.uuid4()}.mp4"
+        video_path = os.path.join(DOWNLOAD_FOLDER, video_filename)
+
         ydl_opts = {
-            'cookiefile': COOKIES_PATH,
-            'quiet': True,
+            'cookiefile': 'cookies.txt',
+            'format': 'bestvideo+bestaudio/best',
+            'outtmpl': video_path,
+            'merge_output_format': 'mp4'
         }
 
         with YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
-            formats = info.get('formats', [])
-            
-            # Sort formats by quality in descending order
-            formats.sort(key=lambda x: -x.get('quality', 0))
-            
-            # Get top 3 video URLs
-            video_urls = [f['url'] for f in formats[:3]]
+            ydl.download([url])
 
-        return jsonify({"video_urls": video_urls})
+        return jsonify({"download_url": f"{request.host_url}downloads/{video_filename}"})
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/downloads/<filename>', methods=['GET'])
+def serve_file(filename):
+    return send_from_directory(DOWNLOAD_FOLDER, filename)
+
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
+    app.run(host='0.0.0.0', port=8080)
